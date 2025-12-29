@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kinetic Analog-Digital Clock</title>
+    <style>
+        :root {
+            --bg-color: #1a1a1a;
+            --clock-face: #252525;
+            --hand-color: #e0e0e0;
+            --clock-size: 40px; /* Adjust size of individual clocks here */
+            --gap: 2px;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            font-family: sans-serif;
+            overflow: hidden;
+        }
+
+        /* Container for the whole time display */
+        .clock-display {
+            display: flex;
+            gap: calc(var(--clock-size) * 1.5); /* Gap between digits */
+        }
+
+        /* Grid for a single number (4 wide x 6 high) */
+        .digit-grid {
+            display: grid;
+            grid-template-columns: repeat(4, var(--clock-size));
+            grid-template-rows: repeat(6, var(--clock-size));
+            gap: var(--gap);
+        }
+
+        /* Individual Clock Styles */
+        .clock {
+            width: var(--clock-size);
+            height: var(--clock-size);
+            background-color: var(--clock-face);
+            border-radius: 50%;
+            position: relative;
+            box-shadow: inset 1px 1px 4px rgba(0,0,0,0.5);
+        }
+
+        /* The Hands */
+        .hand {
+            position: absolute;
+            background-color: var(--hand-color);
+            border-radius: 2px;
+            transform-origin: bottom center;
+            transition: transform 2s cubic-bezier(0.4, 0.0, 0.2, 1);
+            /* Smooth mechanical movement */
+            left: calc(50% - 1.5px); /* Center horizontal */
+            bottom: 50%; /* Anchor at center */
+            width: 3px;
+        }
+
+        .hand.hour {
+            height: 30%; /* Shorter hand */
+            z-index: 2;
+        }
+
+        .hand.minute {
+            height: 45%; /* Longer hand */
+            z-index: 1;
+        }
+
+        /* Separator Dots (optional styling) */
+        .separator {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 20px;
+        }
+        .dot {
+            width: 15px;
+            height: 15px;
+            background: var(--hand-color);
+            border-radius: 50%;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="clock-display" id="display">
+        <!-- Digits will be injected here by JS -->
+    </div>
+
+<script>
+    /**
+     * CONFIGURATION
+     * We define "Types" of clock states based on the angles of the two hands.
+     * Format: [HourHandAngle, MinuteHandAngle] (in degrees)
+     * 0 = Up, 90 = Right, 180 = Down, 270 = Left
+     */
+    const TYPES = {
+        '|': [180, 0],    // Vertical Line
+        '-': [90, 270],   // Horizontal Line
+        'r': [90, 180],   // Top-Left Corner ( ┌ )
+        '7': [180, 270],  // Top-Right Corner ( ┐ )
+        'L': [0, 90],     // Bottom-Left Corner ( └ )
+        'J': [0, 270],    // Bottom-Right Corner ( ┘ )
+        'T': [180, 180],  // Single hand down (top cap)
+        'B': [0, 0],      // Single hand up (bottom cap)
+        ' ': [225, 225]   // Empty / Idle (Hands at 7:35 position)
+    };
+
+    /**
+     * DIGIT MAPS
+     * A 4x6 grid representation for numbers 0-9 using the keys above.
+     */
+    const NUMBERS = {
+        0: [
+            ['r','-','-','7'],
+            ['|',' ',' ','|'],
+            ['|',' ',' ','|'],
+            ['|',' ',' ','|'],
+            ['|',' ',' ','|'],
+            ['L','-','-','J']
+        ],
+        1: [
+            [' ','r','7',' '],
+            [' ','|','|',' '],
+            [' ','|','|',' '],
+            [' ','|','|',' '],
+            [' ','|','|',' '],
+            [' ','L','J',' ']
+        ],
+        2: [
+            ['r','-','-','7'],
+            [' ',' ','r','J'],
+            ['r','-','J',' '],
+            ['L','-','7',' '],
+            ['r','-','J',' '],
+            ['L','-','-','J']
+        ],
+        3: [
+            ['r','-','-','7'],
+            [' ',' ','r','J'],
+            [' ','r','J',' '],
+            [' ','L','7',' '],
+            [' ',' ','L','7'],
+            ['L','-','-','J']
+        ],
+        4: [
+            ['r','-','7',' '],
+            ['|',' ','|',' '],
+            ['L','-','J',' '],
+            [' ',' ','|',' '],
+            [' ',' ','|',' '],
+            [' ',' ','B',' ']
+        ],
+        5: [
+            ['r','-','-','7'],
+            ['L','-','7',' '],
+            ['r','-','J',' '],
+            [' ',' ','r','7'],
+            [' ',' ','|','|'],
+            ['L','-','-','J']
+        ],
+        6: [
+            ['r','-','-','7'],
+            ['|',' ',' ',' '],
+            ['L','-','-','7'],
+            ['|',' ',' ','|'],
+            ['|',' ',' ','|'],
+            ['L','-','-','J']
+        ],
+        7: [
+            ['r','-','-','7'],
+            [' ',' ','r','J'],
+            [' ',' ','|',' '],
+            [' ',' ','|',' '],
+            [' ',' ','|',' '],
+            [' ',' ','B',' ']
+        ],
+        8: [
+            ['r','-','-','7'],
+            ['|',' ',' ','|'],
+            ['L','-','-','J'],
+            ['r','-','-','7'],
+            ['|',' ',' ','|'],
+            ['L','-','-','J']
+        ],
+        9: [
+            ['r','-','-','7'],
+            ['|',' ',' ','|'],
+            ['L','-','-','J'],
+            [' ',' ',' ','|'],
+            [' ',' ',' ','|'],
+            ['L','-','-','J']
+        ]
+    };
+
+    // DOM Elements
+    const container = document.getElementById('display');
+    
+    // State to track current hands rotation to allow smooth additive rotation
+    // (Prevents hands spinning 360 degrees unnecessarily)
+    let clockStateMatrix = []; 
+
+    /**
+     * Initialize the DOM elements
+     * We need 4 digits: H1, H2, M1, M2
+     */
+    function initClock() {
+        // Create 4 digit groups
+        for (let d = 0; d < 4; d++) {
+            let digitDiv = document.createElement('div');
+            digitDiv.className = 'digit-grid';
+            digitDiv.id = `digit-${d}`;
+            
+            // Create 24 clocks per digit (4x6)
+            for (let i = 0; i < 24; i++) {
+                let clock = document.createElement('div');
+                clock.className = 'clock';
+                
+                let hourHand = document.createElement('div');
+                hourHand.className = 'hand hour';
+                
+                let minHand = document.createElement('div');
+                minHand.className = 'hand minute';
+
+                clock.appendChild(hourHand);
+                clock.appendChild(minHand);
+                digitDiv.appendChild(clock);
+            }
+            container.appendChild(digitDiv);
+            
+            // Initialize state for this digit
+            // 24 clocks, each has [currentHourAngle, currentMinAngle]
+            clockStateMatrix.push(new Array(24).fill([225, 225]));
+        }
+    }
+
+    /**
+     * Helper to get normalized angle (closest rotation)
+     * This logic ensures the hand takes the shortest path to the next angle
+     * or continues spinning in a pleasing way.
+     */
+    function getNextAngle(current, target) {
+        // Calculate difference
+        let diff = target - (current % 360);
+        
+        // Normalize to -180 to 180
+        if (diff > 180) diff -= 360;
+        if (diff < -180) diff += 360;
+        
+        return current + diff;
+    }
+
+    /**
+     * Update the clock faces
+     */
+    function updateClock() {
+        const now = new Date();
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        const timeString = hours + minutes; // "1230"
+
+        // Loop through the 4 digits of the time
+        for (let i = 0; i < 4; i++) {
+            const num = parseInt(timeString[i]);
+            const map = NUMBERS[num];
+            const digitContainer = document.getElementById(`digit-${i}`);
+            const clocks = digitContainer.getElementsByClassName('clock');
+
+            // Flatten the map (6 rows of 4 items) into linear array of 24
+            let flatMap = [];
+            map.forEach(row => row.forEach(type => flatMap.push(type)));
+
+            // Update each clock in the grid
+            for (let c = 0; c < 24; c++) {
+                const typeKey = flatMap[c];
+                const targetAngles = TYPES[typeKey]; // [h, m]
+
+                // Get current absolute rotation from state
+                let [curH, curM] = clockStateMatrix[i][c];
+
+                // Calculate next additive angle
+                let nextH = getNextAngle(curH, targetAngles[0]);
+                let nextM = getNextAngle(curM, targetAngles[1]);
+
+                // Update DOM
+                const hHand = clocks[c].querySelector('.hour');
+                const mHand = clocks[c].querySelector('.minute');
+
+                hHand.style.transform = `rotate(${nextH}deg)`;
+                mHand.style.transform = `rotate(${nextM}deg)`;
+
+                // Save state
+                clockStateMatrix[i][c] = [nextH, nextM];
+            }
+        }
+    }
+
+    // Start
+    initClock();
+    
+    // Initial update
+    setTimeout(updateClock, 100); 
+
+    // Update every minute (or periodically to ensure sync)
+    // We update every second to catch the time change immediately, 
+    // but the CSS transition handles the smoothing.
+    setInterval(updateClock, 1000);
+
+</script>
+</body>
+</html>
