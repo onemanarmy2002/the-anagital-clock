@@ -3,315 +3,727 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kinetic Analog-Digital Clock</title>
+    <title>Clock of Clocks - Multi-Mode</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@100;300;500&family=Inter:wght@100;300;600&display=swap');
+
         :root {
-            --bg-color: #1a1a1a;
-            --clock-face: #252525;
-            --hand-color: #e0e0e0;
-            --clock-size: 40px; /* Adjust size of individual clocks here */
-            --gap: 2px;
+            --bg-color: #050505;
+            --container-bg: radial-gradient(circle at center, #111 0%, #050505 100%);
+            --clock-bg: #0a0a0a;
+            --clock-border: #1a1a1a;
+            --hand-active: #fff;
+            --hand-inactive: #222;
+            --hand-opacity: 0.2;
+            --accent-glow: #00f2ff;
+            --sep-color: #222;
+            --shadow-opacity: 0;
+            --btn-bg: #111;
+            --font-main: 'Inter', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+
+        [data-theme="light"] {
+            --bg-color: #e0e0e0;
+            --container-bg: radial-gradient(circle at center, #ffffff 0%, #dcdcdc 100%);
+            --clock-bg: #f5f5f5;
+            --clock-border: #d0d0d0;
+            --hand-active: #111;
+            --hand-inactive: #e0e0e0;
+            --hand-opacity: 1;
+            --accent-glow: #ff7b00;
+            --sep-color: #bbb;
+            --shadow-opacity: 0.2;
+            --btn-bg: #fff;
         }
 
         body {
             background-color: var(--bg-color);
+            transition: background-color 1s ease;
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
-            height: 100vh;
+            min-height: 100vh;
             margin: 0;
-            font-family: sans-serif;
             overflow: hidden;
+            font-family: var(--font-main);
+            font-weight: 300;
+            user-select: none;
+            color: var(--hand-active);
         }
 
-        /* Container for the whole time display */
-        .clock-display {
+        /* Mode Switcher Styles */
+        .mode-switcher {
             display: flex;
-            gap: calc(var(--clock-size) * 1.5); /* Gap between digits */
-        }
-
-        /* Grid for a single number (4 wide x 6 high) */
-        .digit-grid {
-            display: grid;
-            grid-template-columns: repeat(4, var(--clock-size));
-            grid-template-rows: repeat(6, var(--clock-size));
-            gap: var(--gap);
-        }
-
-        /* Individual Clock Styles */
-        .clock {
-            width: var(--clock-size);
-            height: var(--clock-size);
-            background-color: var(--clock-face);
-            border-radius: 50%;
             position: relative;
-            box-shadow: inset 1px 1px 4px rgba(0,0,0,0.5);
+            gap: 0;
+            margin-bottom: 40px;
+            background: var(--clock-bg);
+            padding: 4px;
+            border-radius: 50px;
+            border: 1px solid var(--clock-border);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            z-index: 50;
         }
 
-        /* The Hands */
-        .hand {
+        .mode-indicator {
             position: absolute;
-            background-color: var(--hand-color);
-            border-radius: 2px;
-            transform-origin: bottom center;
-            transition: transform 2s cubic-bezier(0.4, 0.0, 0.2, 1);
-            /* Smooth mechanical movement */
-            left: calc(50% - 1.5px); /* Center horizontal */
-            bottom: 50%; /* Anchor at center */
-            width: 3px;
-        }
-
-        .hand.hour {
-            height: 30%; /* Shorter hand */
-            z-index: 2;
-        }
-
-        .hand.minute {
-            height: 45%; /* Longer hand */
+            height: calc(100% - 8px);
+            background: var(--accent-glow);
+            border-radius: 40px;
+            transition: all 0.5s cubic-bezier(0.65, 0, 0.35, 1);
+            box-shadow: 0 0 15px var(--accent-glow);
             z-index: 1;
         }
 
-        /* Separator Dots (optional styling) */
+        .mode-btn {
+            position: relative;
+            padding: 10px 24px;
+            border-radius: 40px;
+            border: none;
+            background: transparent;
+            color: var(--hand-inactive);
+            cursor: pointer;
+            font-weight: 300; /* Ultra thin like a clock hand */
+            font-size: 13px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            transition: color 0.4s ease, text-shadow 0.4s ease;
+            z-index: 2;
+            white-space: nowrap;
+        }
+
+        .mode-btn.active {
+            color: #000;
+            font-weight: 600;
+        }
+
+        .theme-toggle {
+            position: absolute;
+            top: 30px;
+            right: 30px;
+            padding: 12px;
+            border-radius: 50%;
+            background: var(--clock-bg);
+            border: 2px solid var(--clock-border);
+            color: var(--hand-active);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            z-index: 100;
+        }
+
+        .theme-toggle:hover {
+            transform: rotate(45deg) scale(1.1);
+            border-color: var(--accent-glow);
+            box-shadow: 0 0 15px var(--accent-glow);
+        }
+
+        .clock-container {
+            display: flex;
+            gap: 20px;
+            padding: 60px;
+            align-items: center;
+            background: var(--container-bg);
+            border-radius: 40px;
+            box-shadow: 20px 20px 60px rgba(0,0,0,0.1), -20px -20px 60px rgba(255,255,255,0.05);
+            transition: all 1s ease;
+            position: relative;
+        }
+
+        .digit-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 50px);
+            grid-template-rows: repeat(3, 50px);
+            gap: 8px;
+        }
+
+        .small-clock {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: 1px solid var(--clock-border);
+            position: relative;
+            background: var(--clock-bg);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            cursor: crosshair;
+        }
+
+        .hand {
+            position: absolute;
+            bottom: 50%;
+            left: 50%;
+            width: 2px;
+            background: var(--hand-inactive);
+            transform-origin: bottom center;
+            transition: transform 2.5s cubic-bezier(0.4, 0, 0.2, 1), 
+                        background 0.8s ease, 
+                        box-shadow 0.8s ease,
+                        opacity 0.8s ease;
+            border-radius: 2px;
+            opacity: var(--hand-opacity);
+        }
+
+        .is-active .hand {
+            background: var(--hand-active);
+            opacity: 1;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+        }
+
+        [data-theme="light"] .is-active .hand {
+            box-shadow: 4px 4px 6px rgba(0, 0, 0, var(--shadow-opacity));
+        }
+
+        .is-active:hover {
+            border-color: var(--accent-glow);
+            transform: scale(1.15);
+            z-index: 20;
+            box-shadow: 0 0 25px rgba(0, 242, 255, 0.15);
+        }
+
+        .is-active:hover .hand {
+            background: var(--accent-glow);
+            opacity: 1;
+            box-shadow: 0 0 15px var(--accent-glow), 0 0 30px var(--accent-glow);
+            filter: brightness(1.2);
+        }
+
+        .seconds-grid .hand {
+            transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1), background 0.8s ease;
+        }
+
+        .hand-1, .hand-2 { height: 22px; }
+
         .separator {
             display: flex;
             flex-direction: column;
             justify-content: center;
             gap: 20px;
+            color: var(--sep-color);
+            font-size: 35px;
+            font-weight: bold;
+            padding: 0 15px;
+            transition: color 1s ease;
         }
-        .dot {
-            width: 15px;
-            height: 15px;
-            background: var(--hand-color);
-            border-radius: 50%;
-            opacity: 0.5;
+
+        .calibrating .hand {
+            transition: transform 1.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) !important;
+        }
+
+        /* Control Panel */
+        .controls {
+            margin-top: 40px;
+            display: flex;
+            gap: 15px;
+            height: 50px;
+            opacity: 0;
+            transform: translateY(30px) scale(0.95);
+            pointer-events: none;
+            transition: opacity 0.5s ease, transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .controls.visible {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            pointer-events: auto;
+        }
+
+        .controls.switching {
+            opacity: 0;
+            transform: translateY(15px) scale(0.98);
+        }
+
+        .control-btn {
+            background: var(--clock-bg);
+            border: 1px solid var(--clock-border);
+            color: var(--hand-active);
+            padding: 0 25px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 300;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-size: 11px;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: var(--font-main);
+        }
+
+        .btn-text {
+            transition: opacity 0.2s ease;
+        }
+        .text-fade { opacity: 0; }
+
+        .control-btn:hover {
+            border-color: var(--accent-glow);
+            color: var(--accent-glow);
+            box-shadow: 0 0 20px rgba(0, 242, 255, 0.1);
+            text-shadow: 0 0 10px var(--accent-glow);
+            transform: translateY(-2px);
+        }
+
+        .control-btn.primary {
+            background: var(--accent-glow);
+            color: #000;
+            border: none;
+            font-weight: 600;
+        }
+
+        /* Mechanical Time Selector Overlay */
+        .selector-overlay {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 0;
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(15px);
+            z-index: 200;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            transition: height 0.6s cubic-bezier(0.65, 0, 0.35, 1);
+        }
+
+        .selector-overlay.open {
+            height: 100%;
+        }
+
+        .selector-label {
+            color: var(--hand-active);
+            font-size: 12px;
+            letter-spacing: 6px;
+            text-transform: uppercase;
+            margin-bottom: 40px;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: all 0.4s 0.3s;
+            font-weight: 100;
+            text-shadow: 0 0 5px var(--hand-active);
+        }
+
+        .selector-overlay.open .selector-label {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .gear-box {
+            display: flex;
+            gap: 40px;
+            align-items: center;
+            perspective: 1000px;
+        }
+
+        .drum-container {
+            width: 80px;
+            height: 180px;
+            position: relative;
+            background: #080808;
+            border-radius: 15px;
+            border: 1px solid #1a1a1a;
+            overflow: hidden;
+            box-shadow: inset 0 0 40px rgba(0,0,0,1);
+            cursor: ns-resize;
+        }
+
+        .drum-mask {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(
+                to bottom,
+                #000 0%,
+                transparent 30%,
+                transparent 70%,
+                #000 100%
+            );
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        .drum-values {
+            position: absolute;
+            width: 100%;
+            top: 50%;
+            left: 0;
+            transition: transform 0.1s linear;
+            will-change: transform;
+        }
+
+        .drum-value {
+            height: 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: var(--font-mono);
+            font-size: 26px;
+            font-weight: 100; /* Extremely thin font weight */
+            color: #222;
+            transition: color 0.3s, filter 0.3s, transform 0.3s;
+            letter-spacing: 2px;
+        }
+
+        .drum-value.active {
+            color: var(--accent-glow);
+            filter: drop-shadow(0 0 10px var(--accent-glow));
+            transform: scale(1.1);
+            font-weight: 300;
+        }
+
+        .drum-sep {
+            color: #1a1a1a;
+            font-size: 30px;
+            font-weight: 100;
+            font-family: var(--font-mono);
+        }
+
+        .selector-footer {
+            margin-top: 50px;
+            display: flex;
+            gap: 20px;
+        }
+
+        @media (max-width: 500px) {
+            .gear-box { gap: 15px; transform: scale(0.8); }
         }
     </style>
 </head>
-<body>
+<body data-theme="dark">
 
-    <div class="clock-display" id="display">
-        <!-- Digits will be injected here by JS -->
+    <button class="theme-toggle" id="theme-toggle" title="Recalibrate System">
+        <svg id="theme-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+    </button>
+
+    <div class="mode-switcher">
+        <div class="mode-indicator" id="mode-indicator"></div>
+        <button class="mode-btn active" data-mode="clock">Clock</button>
+        <button class="mode-btn" data-mode="timer">Timer</button>
+        <button class="mode-btn" data-mode="stopwatch">Stopwatch</button>
     </div>
 
-<script>
-    /**
-     * CONFIGURATION
-     * We define "Types" of clock states based on the angles of the two hands.
-     * Format: [HourHandAngle, MinuteHandAngle] (in degrees)
-     * 0 = Up, 90 = Right, 180 = Down, 270 = Left
-     */
-    const TYPES = {
-        '|': [180, 0],    // Vertical Line
-        '-': [90, 270],   // Horizontal Line
-        'r': [90, 180],   // Top-Left Corner ( ┌ )
-        '7': [180, 270],  // Top-Right Corner ( ┐ )
-        'L': [0, 90],     // Bottom-Left Corner ( └ )
-        'J': [0, 270],    // Bottom-Right Corner ( ┘ )
-        'T': [180, 180],  // Single hand down (top cap)
-        'B': [0, 0],      // Single hand up (bottom cap)
-        ' ': [225, 225]   // Empty / Idle (Hands at 7:35 position)
-    };
+    <div class="clock-container" id="clock-container">
+        <!-- Digits injected here -->
+    </div>
 
-    /**
-     * DIGIT MAPS
-     * A 4x6 grid representation for numbers 0-9 using the keys above.
-     */
-    const NUMBERS = {
-        0: [
-            ['r','-','-','7'],
-            ['|',' ',' ','|'],
-            ['|',' ',' ','|'],
-            ['|',' ',' ','|'],
-            ['|',' ',' ','|'],
-            ['L','-','-','J']
-        ],
-        1: [
-            [' ','r','7',' '],
-            [' ','|','|',' '],
-            [' ','|','|',' '],
-            [' ','|','|',' '],
-            [' ','|','|',' '],
-            [' ','L','J',' ']
-        ],
-        2: [
-            ['r','-','-','7'],
-            [' ',' ','r','J'],
-            ['r','-','J',' '],
-            ['L','-','7',' '],
-            ['r','-','J',' '],
-            ['L','-','-','J']
-        ],
-        3: [
-            ['r','-','-','7'],
-            [' ',' ','r','J'],
-            [' ','r','J',' '],
-            [' ','L','7',' '],
-            [' ',' ','L','7'],
-            ['L','-','-','J']
-        ],
-        4: [
-            ['r','-','7',' '],
-            ['|',' ','|',' '],
-            ['L','-','J',' '],
-            [' ',' ','|',' '],
-            [' ',' ','|',' '],
-            [' ',' ','B',' ']
-        ],
-        5: [
-            ['r','-','-','7'],
-            ['L','-','7',' '],
-            ['r','-','J',' '],
-            [' ',' ','r','7'],
-            [' ',' ','|','|'],
-            ['L','-','-','J']
-        ],
-        6: [
-            ['r','-','-','7'],
-            ['|',' ',' ',' '],
-            ['L','-','-','7'],
-            ['|',' ',' ','|'],
-            ['|',' ',' ','|'],
-            ['L','-','-','J']
-        ],
-        7: [
-            ['r','-','-','7'],
-            [' ',' ','r','J'],
-            [' ',' ','|',' '],
-            [' ',' ','|',' '],
-            [' ',' ','|',' '],
-            [' ',' ','B',' ']
-        ],
-        8: [
-            ['r','-','-','7'],
-            ['|',' ',' ','|'],
-            ['L','-','-','J'],
-            ['r','-','-','7'],
-            ['|',' ',' ','|'],
-            ['L','-','-','J']
-        ],
-        9: [
-            ['r','-','-','7'],
-            ['|',' ',' ','|'],
-            ['L','-','-','J'],
-            [' ',' ',' ','|'],
-            [' ',' ',' ','|'],
-            ['L','-','-','J']
-        ]
-    };
+    <div class="controls" id="controls">
+        <button class="control-btn primary" id="start-stop"><span class="btn-text">Start</span></button>
+        <button class="control-btn" id="reset-btn"><span class="btn-text">Reset</span></button>
+        <button class="control-btn" id="open-selector"><span class="btn-text">Set Time</span></button>
+    </div>
 
-    // DOM Elements
-    const container = document.getElementById('display');
-    
-    // State to track current hands rotation to allow smooth additive rotation
-    // (Prevents hands spinning 360 degrees unnecessarily)
-    let clockStateMatrix = []; 
+    <!-- The Mechanical Gear Selector Overlay -->
+    <div class="selector-overlay" id="selector-overlay">
+        <div class="selector-label">Mechanical Calibration</div>
+        <div class="gear-box">
+            <div class="drum-container" id="drum-h" data-limit="24">
+                <div class="drum-mask"></div>
+                <div class="drum-values"></div>
+            </div>
+            <div class="drum-sep">:</div>
+            <div class="drum-container" id="drum-m" data-limit="60">
+                <div class="drum-mask"></div>
+                <div class="drum-values"></div>
+            </div>
+            <div class="drum-sep">:</div>
+            <div class="drum-container" id="drum-s" data-limit="60">
+                <div class="drum-mask"></div>
+                <div class="drum-values"></div>
+            </div>
+        </div>
+        <div class="selector-footer">
+            <button class="control-btn primary" id="confirm-selection">Confirm</button>
+            <button class="control-btn" id="cancel-selection">Cancel</button>
+        </div>
+    </div>
 
-    /**
-     * Initialize the DOM elements
-     * We need 4 digits: H1, H2, M1, M2
-     */
-    function initClock() {
-        // Create 4 digit groups
-        for (let d = 0; d < 4; d++) {
-            let digitDiv = document.createElement('div');
-            digitDiv.className = 'digit-grid';
-            digitDiv.id = `digit-${d}`;
+    <script>
+        (function() {
+            const NEUTRAL_ANGLE = 225; 
+            const digits = {
+                0: [[180, 90], [180, 270], [180, 0], [180, 0], [0, 90], [0, 270]],
+                1: [[225, 225], [180, 180], [225, 225], [180, 0], [225, 225], [0, 0]],
+                2: [[90, 90], [180, 270], [180, 90], [0, 270], [0, 90], [270, 270]],
+                3: [[90, 90], [180, 270], [90, 90], [180, 0], [90, 90], [0, 270]],
+                4: [[180, 180], [180, 180], [0, 90], [180, 0], [225, 225], [0, 0]],
+                5: [[180, 90], [270, 270], [0, 90], [180, 270], [90, 90], [0, 270]],
+                6: [[180, 90], [270, 270], [180, 0], [180, 270], [0, 90], [0, 270]],
+                7: [[90, 90], [180, 270], [225, 225], [180, 0], [225, 225], [0, 0]],
+                8: [[180, 90], [180, 270], [0, 90], [0, 270], [0, 90], [0, 270]],
+                9: [[180, 90], [180, 270], [0, 90], [180, 0], [90, 90], [0, 270]]
+            };
+
+            const container = document.getElementById('clock-container');
+            const body = document.body;
+            const digitElements = [];
+            const modeIndicator = document.getElementById('mode-indicator');
+            const controls = document.getElementById('controls');
             
-            // Create 24 clocks per digit (4x6)
-            for (let i = 0; i < 24; i++) {
-                let clock = document.createElement('div');
-                clock.className = 'clock';
-                
-                let hourHand = document.createElement('div');
-                hourHand.className = 'hand hour';
-                
-                let minHand = document.createElement('div');
-                minHand.className = 'hand minute';
+            let currentMode = 'clock'; 
+            let isCalibrating = false;
+            let timerSeconds = 300; 
+            let isTimerRunning = false;
+            let swSeconds = 0;
+            let isSWRunning = false;
 
-                clock.appendChild(hourHand);
-                clock.appendChild(minHand);
-                digitDiv.appendChild(clock);
+            // Drum Selector Logic
+            const drums = {
+                h: { el: document.querySelector('#drum-h .drum-values'), val: 0, limit: 24 },
+                m: { el: document.querySelector('#drum-m .drum-values'), val: 5, limit: 60 },
+                s: { el: document.querySelector('#drum-s .drum-values'), val: 0, limit: 60 }
+            };
+
+            function initDrums() {
+                Object.keys(drums).forEach(key => {
+                    const drum = drums[key];
+                    for (let i = 0; i < drum.limit; i++) {
+                        const div = document.createElement('div');
+                        div.className = 'drum-value';
+                        div.textContent = i.toString().padStart(2, '0');
+                        drum.el.appendChild(div);
+                    }
+                    setupDrumInteraction(key);
+                });
             }
-            container.appendChild(digitDiv);
-            
-            // Initialize state for this digit
-            // 24 clocks, each has [currentHourAngle, currentMinAngle]
-            clockStateMatrix.push(new Array(24).fill([225, 225]));
-        }
-    }
 
-    /**
-     * Helper to get normalized angle (closest rotation)
-     * This logic ensures the hand takes the shortest path to the next angle
-     * or continues spinning in a pleasing way.
-     */
-    function getNextAngle(current, target) {
-        // Calculate difference
-        let diff = target - (current % 360);
-        
-        // Normalize to -180 to 180
-        if (diff > 180) diff -= 360;
-        if (diff < -180) diff += 360;
-        
-        return current + diff;
-    }
+            function setupDrumInteraction(key) {
+                const drum = drums[key];
+                const container = drum.el.parentElement;
+                let isDragging = false;
+                let startY = 0;
+                let currentY = drum.val * -40;
 
-    /**
-     * Update the clock faces
-     */
-    function updateClock() {
-        const now = new Date();
-        const hours = String(now.getHours()).padStart(2, '0');
-        const minutes = String(now.getMinutes()).padStart(2, '0');
-        const timeString = hours + minutes; // "1230"
+                function update() {
+                    drum.el.style.transform = `translateY(${currentY}px)`;
+                    const activeIndex = Math.round(Math.abs(currentY / 40));
+                    drum.val = Math.max(0, Math.min(activeIndex, drum.limit - 1));
+                    
+                    const children = drum.el.children;
+                    for (let i = 0; i < children.length; i++) {
+                        children[i].classList.toggle('active', i === drum.val);
+                    }
+                }
 
-        // Loop through the 4 digits of the time
-        for (let i = 0; i < 4; i++) {
-            const num = parseInt(timeString[i]);
-            const map = NUMBERS[num];
-            const digitContainer = document.getElementById(`digit-${i}`);
-            const clocks = digitContainer.getElementsByClassName('clock');
+                container.addEventListener('mousedown', (e) => {
+                    isDragging = true;
+                    startY = e.clientY - currentY;
+                });
 
-            // Flatten the map (6 rows of 4 items) into linear array of 24
-            let flatMap = [];
-            map.forEach(row => row.forEach(type => flatMap.push(type)));
+                window.addEventListener('mousemove', (e) => {
+                    if (!isDragging) return;
+                    currentY = e.clientY - startY;
+                    currentY = Math.min(0, Math.max(currentY, (drum.limit - 1) * -40));
+                    update();
+                });
 
-            // Update each clock in the grid
-            for (let c = 0; c < 24; c++) {
-                const typeKey = flatMap[c];
-                const targetAngles = TYPES[typeKey]; // [h, m]
+                window.addEventListener('mouseup', () => {
+                    if (!isDragging) return;
+                    isDragging = false;
+                    currentY = Math.round(currentY / 40) * 40;
+                    update();
+                });
 
-                // Get current absolute rotation from state
-                let [curH, curM] = clockStateMatrix[i][c];
+                container.addEventListener('wheel', (e) => {
+                    e.preventDefault();
+                    currentY -= Math.sign(e.deltaY) * 40;
+                    currentY = Math.min(0, Math.max(currentY, (drum.limit - 1) * -40));
+                    update();
+                }, { passive: false });
 
-                // Calculate next additive angle
-                let nextH = getNextAngle(curH, targetAngles[0]);
-                let nextM = getNextAngle(curM, targetAngles[1]);
-
-                // Update DOM
-                const hHand = clocks[c].querySelector('.hour');
-                const mHand = clocks[c].querySelector('.minute');
-
-                hHand.style.transform = `rotate(${nextH}deg)`;
-                mHand.style.transform = `rotate(${nextM}deg)`;
-
-                // Save state
-                clockStateMatrix[i][c] = [nextH, nextM];
+                update();
             }
-        }
-    }
 
-    // Start
-    initClock();
-    
-    // Initial update
-    setTimeout(updateClock, 100); 
+            function createClockUI() {
+                for (let i = 0; i < 6; i++) {
+                    if (i === 2 || i === 4) {
+                        const sep = document.createElement('div');
+                        sep.className = 'separator';
+                        sep.innerHTML = '<div>•</div><div>•</div>';
+                        container.appendChild(sep);
+                    }
+                    const grid = document.createElement('div');
+                    grid.className = 'digit-grid';
+                    if (i >= 4) grid.classList.add('seconds-grid');
+                    const clocks = [];
+                    for (let j = 0; j < 6; j++) {
+                        const clock = document.createElement('div');
+                        clock.className = 'small-clock';
+                        const h1 = document.createElement('div');
+                        h1.className = 'hand hand-1';
+                        const h2 = document.createElement('div');
+                        h2.className = 'hand hand-2';
+                        clock.appendChild(h1);
+                        clock.appendChild(h2);
+                        grid.appendChild(clock);
+                        clocks.push({ el: clock, h1, h2 });
+                    }
+                    container.appendChild(grid);
+                    digitElements.push(clocks);
+                }
+            }
 
-    // Update every minute (or periodically to ensure sync)
-    // We update every second to catch the time change immediately, 
-    // but the CSS transition handles the smoothing.
-    setInterval(updateClock, 1000);
+            function formatTime(totalSeconds) {
+                const h = Math.floor(totalSeconds / 3600).toString().padStart(2, '0');
+                const m = Math.floor((totalSeconds % 3600) / 60).toString().padStart(2, '0');
+                const s = (totalSeconds % 60).toString().padStart(2, '0');
+                return h + m + s;
+            }
 
-</script>
+            function updateDisplay(timeStr) {
+                if (isCalibrating) return;
+                for (let i = 0; i < 6; i++) {
+                    const val = parseInt(timeStr[i]);
+                    const pattern = digits[val];
+                    const clocks = digitElements[i];
+                    for (let j = 0; j < 6; j++) {
+                        const [a1, a2] = pattern[j];
+                        const isActive = !(a1 === NEUTRAL_ANGLE && a2 === NEUTRAL_ANGLE);
+                        clocks[j].el.classList.toggle('is-active', isActive);
+                        clocks[j].h1.style.transform = `rotate(${a1}deg)`;
+                        clocks[j].h2.style.transform = `rotate(${a2}deg)`;
+                    }
+                }
+            }
+
+            function runTick() {
+                if (currentMode === 'clock') {
+                    const now = new Date();
+                    const h = now.getHours().toString().padStart(2, '0');
+                    const m = now.getMinutes().toString().padStart(2, '0');
+                    const s = now.getSeconds().toString().padStart(2, '0');
+                    updateDisplay(h + m + s);
+                } else if (currentMode === 'timer') {
+                    if (isTimerRunning && timerSeconds > 0) timerSeconds--;
+                    updateDisplay(formatTime(timerSeconds));
+                } else if (currentMode === 'stopwatch') {
+                    if (isSWRunning) swSeconds++;
+                    updateDisplay(formatTime(swSeconds));
+                }
+            }
+
+            function updateIndicator(target) {
+                modeIndicator.style.left = `${target.offsetLeft}px`;
+                modeIndicator.style.width = `${target.offsetWidth}px`;
+            }
+
+            function setBtnText(btnId, text) {
+                const btn = document.getElementById(btnId);
+                const span = btn.querySelector('.btn-text');
+                if (span.textContent === text) return;
+                span.classList.add('text-fade');
+                setTimeout(() => {
+                    span.textContent = text;
+                    span.classList.remove('text-fade');
+                }, 200);
+            }
+
+            // Mode Switching
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const newMode = btn.dataset.mode;
+                    if (newMode === currentMode || isCalibrating) return;
+                    document.querySelector('.mode-btn.active').classList.remove('active');
+                    btn.classList.add('active');
+                    updateIndicator(btn);
+                    const isCrossModeTransition = (currentMode !== 'clock' && newMode !== 'clock');
+                    calibrateAndSwitch(() => {
+                        currentMode = newMode;
+                        const openSelector = document.getElementById('open-selector');
+                        if (currentMode === 'clock') {
+                            controls.classList.remove('visible');
+                        } else {
+                            controls.classList.add('visible');
+                            setBtnText('start-stop', 'Start');
+                            setBtnText('open-selector', currentMode === 'timer' ? 'Set Time' : 'Lap (N/A)');
+                        }
+                    }, isCrossModeTransition);
+                });
+            });
+
+            function calibrateAndSwitch(callback, isCrossModeTransition = false) {
+                isCalibrating = true;
+                container.classList.add('calibrating');
+                if (isCrossModeTransition) controls.classList.add('switching');
+                digitElements.forEach(d => d.forEach(c => {
+                    c.h1.style.transform = `rotate(720deg)`;
+                    c.h2.style.transform = `rotate(-720deg)`;
+                    c.el.classList.remove('is-active');
+                }));
+                setTimeout(() => {
+                    callback();
+                    setTimeout(() => {
+                        container.classList.remove('calibrating');
+                        controls.classList.remove('switching');
+                        isCalibrating = false;
+                        runTick();
+                    }, 800);
+                }, 1000);
+            }
+
+            // Control Handlers
+            document.getElementById('start-stop').addEventListener('click', () => {
+                if (currentMode === 'timer') {
+                    isTimerRunning = !isTimerRunning;
+                    setBtnText('start-stop', isTimerRunning ? 'Pause' : 'Start');
+                } else if (currentMode === 'stopwatch') {
+                    isSWRunning = !isSWRunning;
+                    setBtnText('start-stop', isSWRunning ? 'Stop' : 'Start');
+                }
+            });
+
+            document.getElementById('reset-btn').addEventListener('click', () => {
+                if (currentMode === 'timer') { isTimerRunning = false; timerSeconds = 300; }
+                else if (currentMode === 'stopwatch') { isSWRunning = false; swSeconds = 0; }
+                setBtnText('start-stop', 'Start');
+                runTick();
+            });
+
+            // Selector Handlers
+            const selectorOverlay = document.getElementById('selector-overlay');
+            document.getElementById('open-selector').addEventListener('click', () => {
+                if (currentMode !== 'timer') return;
+                selectorOverlay.classList.add('open');
+            });
+
+            document.getElementById('cancel-selection').addEventListener('click', () => {
+                selectorOverlay.classList.remove('open');
+            });
+
+            document.getElementById('confirm-selection').addEventListener('click', () => {
+                timerSeconds = (drums.h.val * 3600) + (drums.m.val * 60) + drums.s.val;
+                isTimerRunning = false;
+                setBtnText('start-stop', 'Start');
+                selectorOverlay.classList.remove('open');
+                calibrateAndSwitch(() => { runTick(); });
+            });
+
+            // Theme Toggle
+            document.getElementById('theme-toggle').addEventListener('click', () => {
+                if (isCalibrating) return;
+                const isLight = body.getAttribute('data-theme') === 'light';
+                calibrateAndSwitch(() => {
+                    body.setAttribute('data-theme', isLight ? 'dark' : 'light');
+                    document.getElementById('theme-icon').innerHTML = isLight 
+                        ? '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>' 
+                        : '<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>';
+                    updateIndicator(document.querySelector('.mode-btn.active'));
+                });
+            });
+
+            window.addEventListener('resize', () => {
+                updateIndicator(document.querySelector('.mode-btn.active'));
+            });
+
+            initDrums();
+            createClockUI();
+            updateIndicator(document.querySelector('.mode-btn.active'));
+            setInterval(runTick, 1000);
+            runTick();
+        })();
+    </script>
 </body>
 </html>
